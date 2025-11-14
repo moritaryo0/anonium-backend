@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    working_dir: /app
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.prod
+    environment:
+      - PORT=8080
+      - GUNICORN_WORKERS=4
+      - DEBUG=0
+      - ENVIRONMENT=production
+    # 本番環境では通常ボリュームマウントしない（コードはイメージに含まれる）
+    # volumes:
+    #   - ./backend:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+

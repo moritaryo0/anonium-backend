@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>メールアドレスの認証</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 0;
+        }
+        .email-header {
+            background-color: #ffffff;
+            padding: 30px 20px;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .email-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            color: #333333;
+        }
+        .email-body {
+            padding: 30px 20px;
+        }
+        .email-body p {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            color: #333333;
+        }
+        .verification-code {
+            background-color: #f8f9fa;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        .verification-code-label {
+            font-size: 14px;
+            color: #666666;
+            margin-bottom: 10px;
+            display: block;
+        }
+        .verification-code-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #333333;
+            letter-spacing: 4px;
+            font-family: 'Courier New', monospace;
+        }
+        .button-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        .verification-button {
+            display: inline-block;
+            background-color: #007bff;
+            color: #ffffff;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .verification-button:hover {
+            background-color: #0056b3;
+        }
+        .email-footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            font-size: 14px;
+            color: #666666;
+            border-top: 1px solid #e0e0e0;
+        }
+        .email-footer p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .security-notice {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .security-notice p {
+            margin: 0;
+            font-size: 14px;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="email-header">
+            <h1>メールアドレスの認証</h1>
+        </div>
+        <div class="email-body">
+            <p>こんにちは、{{ display_name }}さん</p>
+            
+            <p>メールアドレスの認証を行うため、以下の6桁の認証コードをご確認ください。</p>
+            
+            <div class="verification-code">
+                <span class="verification-code-label">認証コード</span>
+                <div class="verification-code-value">{{ token }}</div>
+            </div>
+            
+            <div class="button-container">
+                <a href="{{ verification_url }}" class="verification-button">認証ページを開く</a>
+            </div>
+            
+            <p>上記の認証コードを認証ページに入力してください。</p>
+            
+            <div class="security-notice">
+                <p><strong>セキュリティのため</strong></p>
+                <p>この認証コードは24時間有効です。有効期限が過ぎた場合は、新しい認証コードを発行してください。</p>
+                <p>もしこのメールに心当たりがない場合は、このメールを無視してください。</p>
+            </div>
+        </div>
+        <div class="email-footer">
+            <p>このメールは自動送信されています。返信は不要です。</p>
+            <p>© Anonium</p>
+        </div>
+    </div>
+</body>
+</html>
+

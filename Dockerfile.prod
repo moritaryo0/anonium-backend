@@ -1,0 +1,40 @@
+FROM python:3.12-slim
+
+# Python 実行時のバイトコード生成を抑止し、ログをフラッシュ
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# システム依存関係のインストール
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    postgresql-client \
+    libpq-dev \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# 依存関係を先にインストール（レイヤーキャッシュの効率化）
+COPY requirements-prod.txt /app/requirements-prod.txt
+COPY requirements/ /app/requirements/
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r /app/requirements-prod.txt
+
+# アプリケーションコード
+COPY . /app
+
+# 静的ファイルの収集（本番環境用）
+RUN python manage.py collectstatic --noinput || true
+
+EXPOSE 8080
+
+# 本番用: gunicornで起動（Cloud RunはPORT環境変数を使用）
+CMD exec gunicorn app.wsgi:application \
+    --bind 0.0.0.0:${PORT:-8080} \
+    --workers ${GUNICORN_WORKERS:-4} \
+    --worker-class sync \
+    --timeout 120 \
+    --access-logfile - \
+    --error-logfile - \
+    --log-level info
+

@@ -1,0 +1,9 @@
+-r base.txt
+
+# 開発環境では追加の依存関係は不要
+# 必要に応じて以下を追加可能：
+# ipython
+# django-debug-toolbar
+# pytest
+# pytest-django
+

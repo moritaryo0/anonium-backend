@@ -1,0 +1,21 @@
+# Django Core
+Django==5.2.5
+djangorestframework
+djangorestframework-simplejwt
+
+# Utilities
+requests==2.32.3
+beautifulsoup4==4.13.3
+python-dotenv==1.0.0
+
+# Django Extensions
+django-cors-headers
+Pillow==10.4.0
+
+# Cloud Storage
+google-cloud-storage==2.14.0
+
+# WebSocket関連（将来使用する可能性があるため残す）
+channels==4.1.0
+channels-redis==4.2.0
+

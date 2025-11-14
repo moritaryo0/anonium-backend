@@ -1,0 +1,6 @@
+-r base.txt
+
+# 本番環境用の依存関係
+gunicorn==21.2.0
+psycopg2-binary==2.9.9
+
