@@ -17,24 +17,39 @@ from dotenv import load_dotenv
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 環境変数から環境を判定（デフォルトはdevelopment）
+# 環境変数の読み込み順序を修正：
+# 1. まず.env.prodファイルが存在するか確認（本番環境の可能性が高い）
+# 2. 存在する場合は先に読み込む
+# 3. その後でENVIRONMENTを判定する（これにより.env.prodの値が反映される）
+env_prod_file = BASE_DIR / '.env.prod'
+env_dev_file = BASE_DIR / '.env.dev'
+
+# 環境変数ENVIRONMENTを先に取得（docker-composeなどで設定されている場合）
+ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+
+# .env.prodファイルが存在する場合は先に読み込む
+# override=False: 既存の環境変数を優先（docker-composeなどで設定されている場合）
+if env_prod_file.exists():
+    load_dotenv(env_prod_file, override=False)
+    # .env.prodファイルが存在する場合、本番環境と判断
+    # （ENVIRONMENT環境変数が設定されていない場合）
+    if ENVIRONMENT == 'development' and not os.getenv('ENVIRONMENT'):
+        ENVIRONMENT = 'production'
+elif env_dev_file.exists():
+    load_dotenv(env_dev_file, override=False)
+
+# .envファイルを読み込んだ後、再度ENVIRONMENTを取得
+# （.env.prodや.env.devから読み込まれた可能性がある）
+ENVIRONMENT = os.getenv('ENVIRONMENT', ENVIRONMENT)
+
 # 本番環境の検出: ENVIRONMENT環境変数が設定されていない場合でも、
 # ドメイン名から推測（api.anonium.netなど）
-ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
-# 本番環境のドメインが含まれている場合は本番環境として扱う
-if ENVIRONMENT == 'development' and os.getenv('ALLOWED_HOSTS', ''):
-    allowed_hosts_check = os.getenv('ALLOWED_HOSTS', '').lower()
-    if 'anonium.net' in allowed_hosts_check or 'api.anonium.net' in allowed_hosts_check:
-        ENVIRONMENT = 'production'
-
-# 環境に応じて.envファイルを読み込む
-if ENVIRONMENT == 'production':
-    env_file = BASE_DIR / '.env.prod'
-else:
-    env_file = BASE_DIR / '.env.dev'
-
-if env_file.exists():
-    load_dotenv(env_file)
+if ENVIRONMENT == 'development':
+    allowed_hosts_env = os.getenv('ALLOWED_HOSTS', '')
+    if allowed_hosts_env:
+        allowed_hosts_check = allowed_hosts_env.lower()
+        if 'anonium.net' in allowed_hosts_check or 'api.anonium.net' in allowed_hosts_check:
+            ENVIRONMENT = 'production'
 
 # 本番環境では.env.prodが存在しない場合、環境変数から直接読み込む
 # Cloud Runなどでは環境変数が直接設定されるため
