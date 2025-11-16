@@ -270,10 +270,18 @@ X_OAUTH_USER_INFO_URL = 'https://api.twitter.com/2/users/me'
 
 # Security settings for production
 if ENVIRONMENT == 'production':
-    # HTTPSを強制
+    # HTTPSを強制（nginxがSSL終端を担当するため、バックエンドでは無効化）
+    # Cloudflareとnginx間、nginxとバックエンド間はHTTPSだが、
+    # バックエンドはnginxからのHTTPリクエストを受け取るため、リダイレクトを無効化
     SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'False').lower() == 'true'
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_CONTENT_TYPE_NOSNIFF = True
     X_FRAME_OPTIONS = 'DENY'
+    
+    # nginx（プロキシ）からのリクエストを信頼
+    # Cloudflare経由でHTTPSリクエストが来る場合、nginxがX-Forwarded-Proto: httpsを設定
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
+    USE_X_FORWARDED_PORT = True
