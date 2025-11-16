@@ -16,8 +16,24 @@ services:
       - DEBUG=0
       - ENVIRONMENT=production
     # 本番環境では通常ボリュームマウントしない（コードはイメージに含まれる）
-    # volumes:
-    #   - ./backend:/app
+    # ただし、静的ファイルとメディアファイルをNginxと共有する場合は必要
+    volumes:
+      - ./staticfiles:/app/staticfiles:rw  # 静的ファイルをNginxと共有
+      - ./media:/app/media:rw  # メディアファイルをNginxと共有
+    # 起動時に静的ファイルを再収集（ボリュームマウント時）
+    # 環境変数はenvironmentセクションで設定されているため、シェルスクリプト内で参照可能
+    command: >
+      sh -c "
+        python manage.py collectstatic --noinput || true &&
+        exec gunicorn app.wsgi:application
+          --bind 0.0.0.0:$$PORT
+          --workers $$GUNICORN_WORKERS
+          --worker-class sync
+          --timeout 120
+          --access-logfile -
+          --error-logfile -
+          --log-level info
+      "
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8080/health/')\" || exit 1"]
