@@ -209,6 +209,10 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': int(os.getenv('PAGE_SIZE', '20')),
+    # DRFではCSRF保護を無効化（JWT認証を使用するため）
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
 }
 
 # Simple JWT settings
@@ -222,6 +226,11 @@ SIMPLE_JWT = {
 CORS_ALLOW_CREDENTIALS = os.getenv('CORS_ALLOW_CREDENTIALS', 'True').lower() == 'true'
 cors_origins_str = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
+
+# CSRF設定（DRFでは通常無効化されるが、念のため設定）
+# DRFのAPIViewは自動的にCSRFを無効化するが、CORSリクエストのために設定
+CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS.copy()
+CSRF_TRUSTED_ORIGINS.extend([origin.strip() for origin in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if origin.strip()])
 
 # Django Channels settings (WebSocketが有効な場合のみ)
 if ENABLE_WEBSOCKET:
