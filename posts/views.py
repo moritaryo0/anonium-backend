@@ -84,41 +84,29 @@ class CommunityPostListCreateView(generics.ListCreateAPIView):
         clip_post_id = community.clip_post_id if community.clip_post_id else None
         
         if sort == 'trending':
-            # 勢い順の場合はPythonでソート（ページネーションは無効）
+            # 勢い順の場合はDBに保存されたtrending_scoreでソート（ページネーションは無効）
             qs = qs.select_related('community', 'author', 'author__profile', 'tag', 'poll').prefetch_related(
                 'media',
                 Prefetch('poll__options', queryset=PollOption.objects.all().order_by('id'))
-            ).annotate(
-                active_comments=Count('comments', filter=Q(comments__is_deleted=False))
             )
-            posts = list(qs)
-            now = timezone.now()
             
             # 固定ポストとその他のポストを分離
             clipped_post = None
-            other_posts = []
+            if clip_post_id:
+                clipped_qs = qs.filter(id=clip_post_id)
+                clipped_posts = list(clipped_qs)
+                if clipped_posts:
+                    clipped_post = clipped_posts[0]
+                    # シリアライザーでtrending_scoreを返すために設定
+                    clipped_post._trending_score = clipped_post.trending_score
             
-            for post in posts:
-                upvotes = max(int((post.votes_total + post.score) / 2), 0)
-                downvotes = max(post.votes_total - upvotes, 0)
-                comment_count = getattr(post, 'active_comments', 0)
-                trending = calculate_trending_score(
-                    upvotes,
-                    downvotes,
-                    post.created_at,
-                    comment_count=comment_count,
-                    now=now,
-                    half_life_hours=6.0,
-                )
-                post._trending_score = trending
-                
-                if post.id == clip_post_id:
-                    clipped_post = post
-                else:
-                    other_posts.append(post)
+            # 固定ポスト以外をtrending_scoreでソート
+            other_qs = qs.exclude(id=clip_post_id) if clip_post_id else qs
+            other_posts = list(other_qs.order_by('-trending_score', '-created_at'))
             
-            # その他のポストをソート
-            other_posts.sort(key=lambda p: getattr(p, '_trending_score', 0.0), reverse=True)
+            # シリアライザーでtrending_scoreを返すために設定
+            for post in other_posts:
+                post._trending_score = post.trending_score
             
             # 固定ポストがあれば最初に、その後にその他のポスト
             if clipped_post:
@@ -326,7 +314,6 @@ class TrendingPostListView(generics.GenericAPIView):
 
     DEFAULT_LIMIT = 20
     MAX_LIMIT = 50
-    SAMPLE_SIZE = 200
 
     def get_serializer_context(self):
         return super().get_serializer_context()
@@ -338,13 +325,7 @@ class TrendingPostListView(generics.GenericAPIView):
             limit = self.DEFAULT_LIMIT
         limit = max(1, min(limit, self.MAX_LIMIT))
 
-        try:
-            half_life = float(request.query_params.get('half_life_hours', 6))
-        except (TypeError, ValueError):
-            half_life = 6.0
-        if half_life <= 0:
-            half_life = 6.0
-
+        # オプション: 対象期間をフィルタ（デフォルト: 過去7日間）
         try:
             lookback_hours = float(request.query_params.get('lookback_hours', 168))
         except (TypeError, ValueError):
@@ -355,44 +336,31 @@ class TrendingPostListView(generics.GenericAPIView):
         qs = Post.objects.filter(
             is_deleted=False,
             community__visibility=Community.Visibility.PUBLIC,
-        ).annotate(
-            active_comments=Count('comments', filter=Q(comments__is_deleted=False))
         ).select_related('community', 'author', 'author__profile', 'tag', 'poll').prefetch_related(
             'media',
             Prefetch('poll__options', queryset=PollOption.objects.all().order_by('id'))
         )
 
+        # 対象期間でフィルタ
         if lookback_hours > 0:
             qs = qs.filter(created_at__gte=now - timedelta(hours=lookback_hours))
 
+        # ミュートユーザーの投稿を除外
         user = getattr(request, 'user', None)
         if user and getattr(user, 'is_authenticated', False):
             muted_ids = list(UserMute.objects.filter(user=user).values_list('target_id', flat=True))
             if muted_ids:
                 qs = qs.exclude(author_id__in=muted_ids)
 
-        posts = list(qs.order_by('-created_at')[:self.SAMPLE_SIZE])
+        # DBに保存されたtrending_scoreでソート（降順）
+        # スコアが同じ場合は作成日時の降順でソート
+        posts = list(qs.order_by('-trending_score', '-created_at')[:limit])
 
-        scored_posts = []
+        # シリアライザーでtrending_scoreを返すために設定
         for post in posts:
-            upvotes = max(int((post.votes_total + post.score) / 2), 0)
-            downvotes = max(post.votes_total - upvotes, 0)
-            comment_count = getattr(post, 'active_comments', 0)
-            trending = calculate_trending_score(
-                upvotes,
-                downvotes,
-                post.created_at,
-                comment_count=comment_count,
-                now=now,
-                half_life_hours=half_life,
-            )
-            post._trending_score = trending
-            scored_posts.append((trending, post))
+            post._trending_score = post.trending_score
 
-        scored_posts.sort(key=lambda item: item[0], reverse=True)
-        top_posts = [p for _, p in scored_posts[:limit]]
-
-        serializer = self.get_serializer(top_posts, many=True, context=self.get_serializer_context())
+        serializer = self.get_serializer(posts, many=True, context=self.get_serializer_context())
         return Response(serializer.data)
 
 

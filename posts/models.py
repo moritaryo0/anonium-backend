@@ -21,6 +21,7 @@ class Post(models.Model):
     post_type = models.CharField(max_length=10, choices=PostType.choices, default=PostType.TEXT)
     score = models.IntegerField(default=0)
     votes_total = models.PositiveIntegerField(default=0)
+    trending_score = models.FloatField(default=0.0, db_index=True, help_text='トレンドスコア（バッチ処理で更新）')
     # タグ（コミュニティのタグから選択, 単一）
     tag = models.ForeignKey(CommunityTag, null=True, blank=True, on_delete=models.SET_NULL, related_name='posts')
     # soft delete flags
@@ -38,6 +39,7 @@ class Post(models.Model):
         indexes = [
             models.Index(fields=['community', '-created_at']),
             models.Index(fields=['is_deleted', '-created_at']),
+            models.Index(fields=['-trending_score', '-created_at']),
         ]
 
     def __str__(self) -> str:  # pragma: no cover

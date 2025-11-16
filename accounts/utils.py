@@ -23,7 +23,7 @@ def get_client_ip(request) -> Optional[str]:
         
     Returns:
         Optional[str]: IPアドレス（取得できない/該当なしの場合はNone）
-        本番環境ではグローバルIPのみ、開発環境ではプライベートIPも許可
+        グローバルIPのみを許可（ローカルネットワーク上のプライベートIPは除外）
     """
     from django.conf import settings
     
@@ -49,14 +49,12 @@ def get_client_ip(request) -> Optional[str]:
     if remote_addr:
         candidates.append(remote_addr.strip())
 
-    # 開発環境ではプライベートIPも許可、本番環境ではグローバルIPのみ
-    allow_private = getattr(settings, 'DEBUG', False)
-    
+    # グローバルIPのみを許可（ローカルネットワーク上のプライベートIPは除外）
     for ip_str in candidates:
         try:
             ip_obj = ipaddress.ip_address(ip_str)
-            # 開発環境ではプライベートIPも許可、本番環境ではグローバルIPのみ
-            if allow_private or ip_obj.is_global:
+            # グローバルIPのみを許可
+            if ip_obj.is_global:
                 return ip_str
         except ValueError:
             # 不正なIPはスキップ

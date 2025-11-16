@@ -1,0 +1,43 @@
+version: '3.8'
+
+# 本番環境用のnginxを含むcomposeファイル
+# 使用例: docker-compose -f docker-compose.prod.yml -f docker-compose.prod.nginx.yml up -d
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: backend_nginx
+    ports:
+      - "80:80"
+      - "443:443"  # SSL/TLS用（必要に応じて）
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./staticfiles:/var/www/static:ro  # 静的ファイル
+      - ./media:/var/www/media:ro  # メディアファイル
+      - ./nginx/logs:/var/log/nginx  # ログディレクトリ
+    depends_on:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/health/ || wget --no-verbose --tries=1 --spider http://localhost/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - backend_network
+
+  # backendサービスは既存のcomposeファイルから継承されるが、
+  # nginxとの連携のためにネットワークを追加
+  backend:
+    networks:
+      - backend_network
+    # ポートマッピングはnginx経由のみにする場合（外部公開しない）
+    # ports:
+    #   - "8080:8080"  # 開発・デバッグ用にコメントアウト
+
+networks:
+  backend_network:
+    driver: bridge
+
