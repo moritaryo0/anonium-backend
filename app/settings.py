@@ -150,6 +150,24 @@ DB_PASSWORD = os.getenv('DB_PASSWORD', '')
 DB_HOST = os.getenv('DB_HOST', '')
 DB_PORT = os.getenv('DB_PORT', '')
 
+# PostgreSQLを使用する場合、psycopg2がインストールされているかチェック
+if DB_ENGINE == 'django.db.backends.postgresql':
+    try:
+        import psycopg2
+    except ImportError:
+        try:
+            import psycopg
+        except ImportError:
+            # psycopg2もpsycopgもインストールされていない場合、SQLiteにフォールバック
+            import warnings
+            warnings.warn(
+                "PostgreSQLが設定されていますが、psycopg2またはpsycopgがインストールされていません。"
+                "SQLiteにフォールバックします。本番環境ではpsycopg2-binaryをインストールしてください。",
+                UserWarning
+            )
+            DB_ENGINE = 'django.db.backends.sqlite3'
+            DB_NAME = str(BASE_DIR / 'db.sqlite3')
+
 if DB_ENGINE == 'django.db.backends.postgresql':
     DATABASES = {
         'default': {
