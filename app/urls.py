@@ -18,9 +18,12 @@ from django.contrib import admin
 from django.urls import include, path
 from django.conf import settings
 from django.conf.urls.static import static
+from .views import health_check, debug_config
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('health/', health_check, name='health_check'),
+    path('debug/config/', debug_config, name='debug_config'),
     path('api/accounts/', include('accounts.urls')),
     path('api/communities/', include('communities.urls')),
     path('api/messages/', include('messages.urls')),

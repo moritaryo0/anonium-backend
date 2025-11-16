@@ -18,7 +18,14 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # 環境変数から環境を判定（デフォルトはdevelopment）
+# 本番環境の検出: ENVIRONMENT環境変数が設定されていない場合でも、
+# ドメイン名から推測（api.anonium.netなど）
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
+# 本番環境のドメインが含まれている場合は本番環境として扱う
+if ENVIRONMENT == 'development' and os.getenv('ALLOWED_HOSTS', ''):
+    allowed_hosts_check = os.getenv('ALLOWED_HOSTS', '').lower()
+    if 'anonium.net' in allowed_hosts_check or 'api.anonium.net' in allowed_hosts_check:
+        ENVIRONMENT = 'production'
 
 # 環境に応じて.envファイルを読み込む
 if ENVIRONMENT == 'production':
@@ -42,7 +49,15 @@ SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-pm4o%_k#&hnja$3g)@c(0@@l#s
 DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
 
 # ALLOWED_HOSTS
-allowed_hosts_str = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1,backend,0.0.0.0')
+# 本番環境のデフォルト値を追加（環境変数が設定されていない場合のフォールバック）
+if ENVIRONMENT == 'production':
+    default_allowed_hosts = 'localhost,127.0.0.1,backend,0.0.0.0,api.anonium.net'
+else:
+    default_allowed_hosts = 'localhost,127.0.0.1,backend,0.0.0.0'
+allowed_hosts_str = os.getenv('ALLOWED_HOSTS', default_allowed_hosts)
+# 空文字列の場合はデフォルト値を使用
+if not allowed_hosts_str or allowed_hosts_str.strip() == '':
+    allowed_hosts_str = default_allowed_hosts
 ALLOWED_HOSTS = [host.strip() for host in allowed_hosts_str.split(',') if host.strip()]
 
 # WebSocket/Channelsの有効化フラグ（本番環境では無効化）
@@ -224,7 +239,15 @@ SIMPLE_JWT = {
 
 # CORS settings
 CORS_ALLOW_CREDENTIALS = os.getenv('CORS_ALLOW_CREDENTIALS', 'True').lower() == 'true'
-cors_origins_str = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')
+# 本番環境のデフォルト値を追加（環境変数が設定されていない場合のフォールバック）
+if ENVIRONMENT == 'production':
+    default_cors_origins = 'https://www.anonium.net,http://localhost:3000'
+else:
+    default_cors_origins = 'http://localhost:3000'
+cors_origins_str = os.getenv('CORS_ALLOWED_ORIGINS', default_cors_origins)
+# 空文字列の場合はデフォルト値を使用
+if not cors_origins_str or cors_origins_str.strip() == '':
+    cors_origins_str = default_cors_origins
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
 
 # CSRF設定（DRFでは通常無効化されるが、念のため設定）
