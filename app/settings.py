@@ -19,8 +19,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # 環境変数の読み込み順序を修正：
 # 1. まず.env.prodファイルが存在するか確認（本番環境の可能性が高い）
-# 2. 存在する場合は先に読み込む
-# 3. その後でENVIRONMENTを判定する（これにより.env.prodの値が反映される）
+# 2. 存在する場合は先に読み込む（override=Falseで既存の環境変数を優先）
+# 3. その後でENVIRONMENTを判定する
 env_prod_file = BASE_DIR / '.env.prod'
 env_dev_file = BASE_DIR / '.env.dev'
 
@@ -28,25 +28,19 @@ env_dev_file = BASE_DIR / '.env.dev'
 ENVIRONMENT = os.getenv('ENVIRONMENT', 'development')
 
 # .env.prodファイルが存在する場合は先に読み込む
-# override=True: .env.prodの値を優先（本番環境の設定を確実に適用）
+# override=False: 既存の環境変数を優先（docker-composeなどで設定されている場合）
+# これにより、docker-composeで設定されたENVIRONMENT=productionが優先される
 if env_prod_file.exists():
-    load_dotenv(env_prod_file, override=True)
-    # .env.prodファイルが存在する場合、本番環境と判断
-    ENVIRONMENT = 'production'
-elif env_dev_file.exists():
-    load_dotenv(env_dev_file, override=True)
-
-# .envファイルを読み込んだ後、再度ENVIRONMENTを取得
-# （docker-composeなどで環境変数が設定されている場合はそれを優先）
-# ただし、.env.prodファイルが存在する場合は本番環境として扱う
-if env_prod_file.exists():
-    # .env.prodが存在する場合は本番環境（環境変数で上書きされない限り）
+    load_dotenv(env_prod_file, override=False)
+    # .env.prodファイルが存在し、ENVIRONMENTが設定されていない場合は本番環境と判断
     if not os.getenv('ENVIRONMENT'):
         ENVIRONMENT = 'production'
-    else:
-        ENVIRONMENT = os.getenv('ENVIRONMENT', ENVIRONMENT)
-else:
-    ENVIRONMENT = os.getenv('ENVIRONMENT', ENVIRONMENT)
+elif env_dev_file.exists():
+    load_dotenv(env_dev_file, override=False)
+
+# .envファイルを読み込んだ後、再度ENVIRONMENTを取得
+# （.env.prodや.env.devから読み込まれた可能性がある）
+ENVIRONMENT = os.getenv('ENVIRONMENT', ENVIRONMENT)
 
 # 本番環境の検出: ENVIRONMENT環境変数が設定されていない場合でも、
 # ドメイン名から推測（api.anonium.netなど）
