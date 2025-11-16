@@ -158,10 +158,16 @@ class PostSerializer(serializers.ModelSerializer):
             return ''
 
     def get_trending_score(self, obj: Post) -> float | None:
+        # まず_trending_score属性をチェック（動的に計算された場合）
         score = getattr(obj, '_trending_score', None)
-        if score is None:
-            return None
-        return round(float(score), 7)
+        if score is not None:
+            return round(float(score), 7)
+        # _trending_scoreが設定されていない場合は、モデルのtrending_scoreフィールドを使用
+        if hasattr(obj, 'trending_score'):
+            db_score = obj.trending_score
+            if db_score is not None:
+                return round(float(db_score), 7)
+        return None
 
     def get_user_vote(self, obj: Post) -> int | None:
         request = self.context.get('request')
