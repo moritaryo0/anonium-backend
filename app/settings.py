@@ -265,6 +265,28 @@ if not cors_origins_str or cors_origins_str.strip() == '':
     cors_origins_str = default_cors_origins
 CORS_ALLOWED_ORIGINS = [origin.strip() for origin in cors_origins_str.split(',') if origin.strip()]
 
+# CORS設定の追加（すべてのメソッドとヘッダーを許可）
+CORS_ALLOW_ALL_ORIGINS = False  # セキュリティのためFalse（CORS_ALLOWED_ORIGINSを使用）
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+CORS_ALLOW_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+
 # CSRF設定（DRFでは通常無効化されるが、念のため設定）
 # DRFのAPIViewは自動的にCSRFを無効化するが、CORSリクエストのために設定
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS.copy()
