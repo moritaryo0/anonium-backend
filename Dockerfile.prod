@@ -23,9 +23,6 @@ RUN pip install --no-cache-dir --upgrade pip \
 # アプリケーションコード
 COPY . /app
 
-# 静的ファイルとメディアディレクトリを確実に作成
-RUN mkdir -p /app/staticfiles /app/media
-
 # 静的ファイルの収集（本番環境用）
 RUN python manage.py collectstatic --noinput || true
 

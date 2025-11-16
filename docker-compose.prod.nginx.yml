@@ -15,15 +15,11 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro  # SSL証明書（存在する場合）
-      # 静的ファイルとメディアファイルのマウント
-      # backendサービスが起動してcollectstaticを実行した後にディレクトリが作成されます
-      # depends_onでbackendサービスのヘルスチェックが成功するまで待機します
       - ./staticfiles:/var/www/static:ro  # 静的ファイル
       - ./media:/var/www/media:ro  # メディアファイル
       - ./nginx/logs:/var/log/nginx  # ログディレクトリ
     depends_on:
-      backend:
-        condition: service_healthy  # backendサービスのヘルスチェックが成功するまで待機
+      - backend
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost/health/ || wget --no-verbose --tries=1 --spider http://localhost/ || exit 1"]
