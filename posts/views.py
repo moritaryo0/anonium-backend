@@ -426,17 +426,19 @@ class PostDetailView(generics.RetrieveDestroyAPIView):
     def delete(self, request, *args, **kwargs):
         post = get_object_or_404(Post, pk=kwargs.get('pk'))
         # Author can delete own post (unless blocked); otherwise OWNER or ADMIN_MODERATOR can delete
-        if not request.user or not request.user.is_authenticated:
+        # ゲストユーザーも含めて、投稿者本人またはモデレーターのみ削除可能
+        user = self._resolve_guest_user(request)
+        if not user:
             raise PermissionDenied('権限がありません。')
-        if request.user == post.author:
+        if user == post.author:
             # 投稿者本人の場合: ブロックされている場合は削除不可
-            if CommunityBlock.objects.filter(community=post.community, user=request.user).exists():
+            if CommunityBlock.objects.filter(community=post.community, user=user).exists():
                 raise PermissionDenied('あなたはこのアノニウムにブロックされているため、投稿を削除できません。')
         else:
             # 他ユーザーの場合: オーナーまたは管理モデレーターのみ削除可能
             membership = CM.objects.filter(
                 community=post.community,
-                user=request.user,
+                user=user,
                 status=CM.Status.APPROVED,
             ).first()
             if not membership or membership.role not in (CM.Role.OWNER, CM.Role.ADMIN_MODERATOR):
@@ -444,7 +446,7 @@ class PostDetailView(generics.RetrieveDestroyAPIView):
         # soft delete
         post.is_deleted = True
         post.deleted_at = timezone.now()
-        post.deleted_by = request.user
+        post.deleted_by = user
         post.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by', 'updated_at'])
         
         # キャッシュ削除
@@ -458,12 +460,14 @@ class PostDetailView(generics.RetrieveDestroyAPIView):
 
     def patch(self, request, *args, **kwargs):
         post = get_object_or_404(Post, pk=kwargs.get('pk'))
-        if not request.user or not request.user.is_authenticated:
+        # ゲストユーザーも含めて、投稿者本人のみ編集可能
+        user = self._resolve_guest_user(request)
+        if not user:
             raise PermissionDenied('権限がありません。')
         # Author can edit own post unless blocked
-        if request.user != post.author:
+        if user != post.author:
             raise PermissionDenied('権限がありません。')
-        if CommunityBlock.objects.filter(community=post.community, user=request.user).exists():
+        if CommunityBlock.objects.filter(community=post.community, user=user).exists():
             raise PermissionDenied('あなたはこのアノニウムにブロックされているため、編集できません。')
 
         title = request.data.get('title')
@@ -1623,10 +1627,8 @@ class CommentDetailView(generics.DestroyAPIView):
         return get_or_create_guest_user(request, create_if_not_exists=False)
 
     def get_permissions(self):
-        # GETは誰でも許可、PATCH/DELETEは認証が必要
-        if self.request.method == 'GET':
-            return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
+        # GET/PATCH/DELETEは全て許可（ゲストユーザーも可能）
+        return [permissions.AllowAny()]
 
     def get(self, request, *args, **kwargs):
         comment = get_object_or_404(Comment.objects.prefetch_related('media'), pk=kwargs.get('pk'))
@@ -1634,12 +1636,14 @@ class CommentDetailView(generics.DestroyAPIView):
 
     def patch(self, request, *args, **kwargs):
         comment = get_object_or_404(Comment, pk=kwargs.get('pk'))
-        if not request.user or not request.user.is_authenticated:
+        # ゲストユーザーも含めて、コメント作成者本人のみ編集可能
+        user = self._resolve_guest_user(request)
+        if not user:
             raise PermissionDenied('権限がありません。')
         # Author can edit own comment unless blocked
-        if request.user != comment.author:
+        if user != comment.author:
             raise PermissionDenied('権限がありません。')
-        if CommunityBlock.objects.filter(community=comment.community, user=request.user).exists():
+        if CommunityBlock.objects.filter(community=comment.community, user=user).exists():
             raise PermissionDenied('あなたはこのアノニウムにブロックされているため、編集できません。')
 
         body = request.data.get('body')
@@ -1667,25 +1671,23 @@ class CommentDetailView(generics.DestroyAPIView):
         
         return Response(CommentSerializer(comment, context={'request': request}).data)
 
-    def get_permissions(self):
-        # GETは誰でも許可、PATCH/DELETEは認証が必要
-        if self.request.method == 'GET':
-            return [permissions.AllowAny()]
-        return [permissions.IsAuthenticated()]
-
     def delete(self, request, *args, **kwargs):
         comment = get_object_or_404(Comment, pk=kwargs.get('pk'))
         # Author can delete own comment (unless blocked); otherwise OWNER or ADMIN_MODERATOR can delete
+        # ゲストユーザーも含めて、コメント作成者本人またはモデレーターのみ削除可能
+        user = self._resolve_guest_user(request)
+        if not user:
+            raise PermissionDenied('権限がありません。')
         post = comment.post
-        if request.user == comment.author:
+        if user == comment.author:
             # コメント作成者本人の場合: ブロックされている場合は削除不可
-            if CommunityBlock.objects.filter(community=comment.community, user=request.user).exists():
+            if CommunityBlock.objects.filter(community=comment.community, user=user).exists():
                 raise PermissionDenied('あなたはこのアノニウムにブロックされているため、コメントを削除できません。')
         else:
             # 他ユーザーの場合: オーナーまたは管理モデレーターのみ削除可能
             membership = CM.objects.filter(
                 community=comment.community,
-                user=request.user,
+                user=user,
                 status=CM.Status.APPROVED,
             ).first()
             if not membership or membership.role not in (CM.Role.OWNER, CM.Role.ADMIN_MODERATOR):
@@ -1701,10 +1703,10 @@ class CommentDetailView(generics.DestroyAPIView):
                 break
             ids.extend(children)
             frontier = children
-        deleted_count = Comment.objects.filter(id__in=ids).update(is_deleted=True, deleted_at=now, deleted_by=request.user)
+        deleted_count = Comment.objects.filter(id__in=ids).update(is_deleted=True, deleted_at=now, deleted_by=user)
         # 削除ログを出力
         logger.info(
-            f"Comment deleted: comment_id={comment.id}, deleted_by={request.user.username} (user_id={request.user.id}), "
+            f"Comment deleted: comment_id={comment.id}, deleted_by={user.username} (user_id={user.id}), "
             f"deleted_count={deleted_count}, post_id={post.id}, community_slug={comment.community.slug}"
         )
         

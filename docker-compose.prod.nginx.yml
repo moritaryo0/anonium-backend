@@ -39,6 +39,11 @@ services:
     # ports:
     #   - "8080:8080"  # 開発・デバッグ用にコメントアウト
 
+  # dbサービスも同じネットワークに追加（backendからアクセス可能にする）
+  db:
+    networks:
+      - backend_network
+
 networks:
   backend_network:
     driver: bridge
