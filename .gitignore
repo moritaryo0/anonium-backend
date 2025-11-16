@@ -35,6 +35,11 @@ db.sqlite3-journal
 .env.prod
 .env.local
 .env.*.local
+# Backup files (may contain secrets)
+*.bak
+*.bak2
+*.backup
+.env.prod.bak*
 
 # Google Cloud Service Account Keys
 *.json
